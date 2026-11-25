@@ -1,1 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIEWORA - Earn Rewards</title>
 
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://libtl.com/sdk.js"
+data-zone="12349862"
+data-sdk="show_12349862"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #0c1020;
+    color: white;
+    min-height: 100vh;
+    padding: 25px 18px;
+}
+
+.container {
+    max-width: 430px;
+    margin: auto;
+}
+
+.logo {
+    font-size: 27px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin-top: 20px;
+}
+
+.logo span {
+    color: #8b7cff;
+}
+
+.subtitle {
+    color: #a5abc0;
+    margin-top: 9px;
+    font-size: 14px;
+}
+
+.card {
+    background: #171d33;
+    border: 1px solid #293252;
+    border-radius: 18px;
+    padding: 23px;
+    margin-top: 28px;
+}
+
+.label {
+    color: #a5abc0;
+    font-size: 13px;
+}
+
+.amount {
+    font-size: 34px;
+    font-weight: bold;
+    margin-top: 12px;
+}
+
+.currency {
+    color: #8b7cff;
+    font-size: 15px;
+}
+
+.total {
+    margin-top: 15px;
+}
+
+.earn-card {
+    margin-top: 22px;
+    text-align: center;
+    padding: 28px 20px;
+}
+
+.ad-icon {
+    font-size: 45px;
+    margin-bottom: 15px;
+}
+
+h2 {
+    font-size: 21px;
+    margin-bottom: 10px;
+}
+
+.description {
+    color: #a5abc0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+button {
+    background: #7967ff;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 17px;
+    width: 100%;
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 24px;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: 0.6;
+}
+
+#message {
+    margin-top: 18px;
+    font-size: 13px;
+    color: #a5abc0;
+    line-height: 1.5;
+}
+
+.footer {
+    text-align: center;
+    color: #777f9a;
+    font-size: 12px;
+    margin-top: 35px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="logo">VIEW<span>ORA</span></div>
+
+    <p class="subtitle">Welcome! Turn your time into rewards.</p>
+
+    <div class="card">
+
+        <div class="label">Today's Earnings</div>
+        <div class="amount">$0.00</div>
+
+        <div class="total">
+            <div class="label">Total Earnings</div>
+            <div class="amount">$0.00</div>
+        </div>
+
+        <div class="currency">Reward dashboard preview</div>
+
+    </div>
+
+    <div class="card earn-card">
+
+        <div class="ad-icon">🎁</div>
+
+        <h2>Watch Ads & Earn</h2>
+
+        <p class="description">
+            Watch a rewarded advertisement and earn rewards
+            on VIEWORA.
+        </p>
+
+        <button id="watchButton" onclick="watchAd()">
+            ▶ Watch Ad & Earn
+        </button>
+
+        <div id="message">
+            Your rewards will appear here.
+        </div>
+
+    </div>
+
+    <div class="footer">
+        VIEWORA © 2026 · Rewards made simple
+    </div>
+
+</div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+async function watchAd() {
+
+    const button = document.getElementById("watchButton");
+    const message = document.getElementById("message");
+
+    if (typeof window.show_12349862 !== "function") {
+        message.textContent = "Advertisement is not available yet. Please try again later.";
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Loading advertisement...";
+    message.textContent = "Please wait while we prepare your advertisement.";
+
+    const rewardId = "VIEWORA-" +
+        Date.now() + "-" +
+        Math.random().toString(36).substring(2, 10);
+
+    try {
+
+        const result = await window.show_12349862({
+            ymid: rewardId,
+            requestVar: "viewora_earn"
+        });
+
+        if (result && result.reward_event_type === "valued") {
+            message.textContent =
+                "✅ Advertisement completed! Verifying your reward...";
+        } else {
+            message.textContent =
+                "Advertisement completed, but no eligible reward was confirmed.";
+        }
+
+    } catch (error) {
+
+        message.textContent =
+            "Advertisement could not be completed. Please try again.";
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = "▶ Watch Ad & Earn";
+
+    }
+}
+</script>
+
+</body>
+  </html>
