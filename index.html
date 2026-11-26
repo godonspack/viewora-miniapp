@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VIEWORA - Earn Rewards</title>
+<title>VIEWORA - Watch, Earn & Get Rewarded</title>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://libtl.com/sdk.js"
+
+<script
+src="https://libtl.com/sdk.js"
 data-zone="12349862"
 data-sdk="show_12349862"></script>
 
@@ -52,7 +54,7 @@ body {
     border: 1px solid #293252;
     border-radius: 18px;
     padding: 23px;
-    margin-top: 28px;
+    margin-top: 22px;
 }
 
 .label {
@@ -61,22 +63,34 @@ body {
 }
 
 .amount {
-    font-size: 34px;
+    font-size: 30px;
     font-weight: bold;
-    margin-top: 12px;
+    margin-top: 10px;
 }
 
 .currency {
     color: #8b7cff;
-    font-size: 15px;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.balance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.balance-item {
+    min-width: 0;
 }
 
 .total {
-    margin-top: 15px;
+    margin-top: 23px;
+    border-top: 1px solid #293252;
+    padding-top: 18px;
 }
 
 .earn-card {
-    margin-top: 22px;
     text-align: center;
     padding: 28px 20px;
 }
@@ -121,6 +135,40 @@ button:disabled {
     line-height: 1.5;
 }
 
+.transaction {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid #293252;
+    font-size: 13px;
+}
+
+.transaction:last-child {
+    border-bottom: none;
+}
+
+.transaction-name {
+    color: white;
+}
+
+.transaction-date {
+    color: #858da7;
+    font-size: 11px;
+    margin-top: 5px;
+}
+
+.transaction-amount {
+    color: #a99cff;
+    white-space: nowrap;
+}
+
+.empty {
+    color: #a5abc0;
+    font-size: 13px;
+    padding: 12px 0;
+}
+
 .footer {
     text-align: center;
     color: #777f9a;
@@ -140,15 +188,26 @@ button:disabled {
 
     <div class="card">
 
-        <div class="label">Today's Earnings</div>
-        <div class="amount">$0.00</div>
+        <div class="balance-grid">
 
-        <div class="total">
-            <div class="label">Total Earnings</div>
-            <div class="amount">$0.00</div>
+            <div class="balance-item">
+                <div class="label">Pending Balance</div>
+                <div class="amount" id="pending">$0.00</div>
+                <div class="currency">Awaiting confirmation</div>
+            </div>
+
+            <div class="balance-item">
+                <div class="label">Available Balance</div>
+                <div class="amount" id="available">$0.00</div>
+                <div class="currency">Withdrawable earnings</div>
+            </div>
+
         </div>
 
-        <div class="currency">Reward dashboard preview</div>
+        <div class="total">
+            <div class="label">Lifetime Earnings</div>
+            <div class="amount" id="lifetime">$0.00</div>
+        </div>
 
     </div>
 
@@ -168,35 +227,179 @@ button:disabled {
         </button>
 
         <div id="message">
-            Your rewards will appear here.
+            Loading your account...
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <h2>Recent Transactions</h2>
+
+        <div id="transactions">
+            <p class="empty">Loading transactions...</p>
         </div>
 
     </div>
 
     <div class="footer">
-        VIEWORA © 2026 · Rewards made simple
+        VIEWORA © 2026 · Watch, Earn & Get Rewarded
     </div>
 
 </div>
 
 <script>
+const API_URL =
+    "https://viewora-rewards-api.godwinjohn451.workers.dev";
+
 const tg = window.Telegram.WebApp;
+
 tg.ready();
 tg.expand();
 
+const pendingElement = document.getElementById("pending");
+const availableElement = document.getElementById("available");
+const lifetimeElement = document.getElementById("lifetime");
+const messageElement = document.getElementById("message");
+const transactionsElement = document.getElementById("transactions");
+const watchButton = document.getElementById("watchButton");
+
+function money(value) {
+    return "$" + Number(value || 0).toFixed(2);
+}
+
+function authHeaders() {
+    return {
+        "Authorization": "tma " + tg.initData
+    };
+}
+
+async function apiRequest(endpoint) {
+
+    if (!tg.initData) {
+        throw new Error(
+            "Please open VIEWORA directly through Telegram."
+        );
+    }
+
+    const response = await fetch(API_URL + endpoint, {
+        method: "GET",
+        headers: authHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+        throw new Error(
+            data.error || "Unable to load account."
+        );
+    }
+
+    return data;
+}
+
+async function loadWallet() {
+
+    try {
+
+        const data = await apiRequest("/api/wallet");
+
+        const wallet = data.wallet;
+
+        pendingElement.textContent = money(wallet.pending);
+        availableElement.textContent = money(wallet.available);
+        lifetimeElement.textContent = money(wallet.lifetime_earned);
+
+        messageElement.textContent =
+            "Your wallet is connected successfully.";
+
+    } catch (error) {
+
+        messageElement.textContent = error.message;
+
+    }
+}
+
+async function loadTransactions() {
+
+    try {
+
+        const data = await apiRequest("/api/transactions?limit=10");
+
+        transactionsElement.innerHTML = "";
+
+        if (!data.transactions.length) {
+
+            transactionsElement.innerHTML =
+                '<p class="empty">No transactions yet.</p>';
+
+            return;
+        }
+
+        data.transactions.forEach(transaction => {
+
+            const item = document.createElement("div");
+            item.className = "transaction";
+
+            const details = document.createElement("div");
+
+            const name = document.createElement("div");
+            name.className = "transaction-name";
+            name.textContent = transaction.description ||
+                transaction.type;
+
+            const date = document.createElement("div");
+            date.className = "transaction-date";
+            date.textContent = transaction.created_at || "";
+
+            details.appendChild(name);
+            details.appendChild(date);
+
+            const amount = document.createElement("div");
+            amount.className = "transaction-amount";
+            amount.textContent = money(transaction.amount);
+
+            item.appendChild(details);
+            item.appendChild(amount);
+
+            transactionsElement.appendChild(item);
+
+        });
+
+    } catch (error) {
+
+        transactionsElement.innerHTML =
+            '<p class="empty">Unable to load transactions.</p>';
+
+    }
+}
+
+async function refreshDashboard() {
+    await Promise.all([
+        loadWallet(),
+        loadTransactions()
+    ]);
+}
+
 async function watchAd() {
 
-    const button = document.getElementById("watchButton");
-    const message = document.getElementById("message");
-
-    if (typeof window.show_12349862 !== "function") {
-        message.textContent = "Advertisement is not available yet. Please try again later.";
+    if (!tg.initData) {
+        messageElement.textContent =
+            "Please open VIEWORA through Telegram.";
         return;
     }
 
-    button.disabled = true;
-    button.textContent = "Loading advertisement...";
-    message.textContent = "Please wait while we prepare your advertisement.";
+    if (typeof window.show_12349862 !== "function") {
+        messageElement.textContent =
+            "Advertisement is not available yet. Please try again later.";
+        return;
+    }
+
+    watchButton.disabled = true;
+    watchButton.textContent = "Loading advertisement...";
+
+    messageElement.textContent =
+        "Please wait while we prepare your advertisement.";
 
     const rewardId = "VIEWORA-" +
         Date.now() + "-" +
@@ -209,27 +412,43 @@ async function watchAd() {
             requestVar: "viewora_earn"
         });
 
-        if (result && result.reward_event_type === "valued") {
-            message.textContent =
-                "✅ Advertisement completed! Verifying your reward...";
+        if (result?.reward_event_type === "valued") {
+
+            messageElement.textContent =
+                "✅ Valued ad event confirmed. Your estimated earnings are being recorded.";
+
+            setTimeout(refreshDashboard, 3000);
+
         } else {
-            message.textContent =
-                "Advertisement completed, but no eligible reward was confirmed.";
+
+            messageElement.textContent =
+                "The advertisement did not generate a valued reward.";
+
         }
 
     } catch (error) {
 
-        message.textContent =
-            "Advertisement could not be completed. Please try again.";
+        messageElement.textContent =
+            "Advertisement could not be completed or verified. Please try again later.";
 
     } finally {
 
-        button.disabled = false;
-        button.textContent = "▶ Watch Ad & Earn";
+        watchButton.disabled = false;
+        watchButton.textContent = "▶ Watch Ad & Earn";
 
     }
 }
+
+// Initial account loading.
+refreshDashboard();
+
+// Refresh balances when the user returns to the Mini App.
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+        refreshDashboard();
+    }
+});
 </script>
 
 </body>
-  </html>
+</html>
